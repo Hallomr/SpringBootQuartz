@@ -1,31 +1,18 @@
 package com.example.demo.controller;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.quartz.CronScheduleBuilder;
-import org.quartz.CronTrigger;
-import org.quartz.JobBuilder;
-import org.quartz.JobDetail;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.TriggerBuilder;
-import org.quartz.TriggerKey;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.example.demo.entity.JobAndTrigger;
 import com.example.demo.job.BaseJob;
 import com.example.demo.service.IJobAndTriggerService;
 import com.github.pagehelper.PageInfo;
+import org.quartz.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 @RestController
@@ -45,18 +32,19 @@ public class JobController
 	@PostMapping(value="/addjob")
 	public void addjob(@RequestParam(value="jobClassName")String jobClassName, 
 			@RequestParam(value="jobGroupName")String jobGroupName, 
-			@RequestParam(value="cronExpression")String cronExpression) throws Exception
+			@RequestParam(value="cronExpression")String cronExpression,
+					   @RequestParam(value="description")String description) throws Exception
 	{			
-		addJob(jobClassName, jobGroupName, cronExpression);
+		addJob(jobClassName, jobGroupName, cronExpression,description);
 	}
 	
-	public void addJob(String jobClassName, String jobGroupName, String cronExpression)throws Exception{
+	public void addJob(String jobClassName, String jobGroupName, String cronExpression,String description)throws Exception{
         
         // 启动调度器  
 		scheduler.start(); 
 		
 		//构建job信息
-		JobDetail jobDetail = JobBuilder.newJob(getClass(jobClassName).getClass()).withIdentity(jobClassName, jobGroupName).build();
+		JobDetail jobDetail = JobBuilder.newJob(getClass(jobClassName).getClass()).withIdentity(jobClassName, jobGroupName).withDescription(description).build();
 		
 		//表达式调度构建器(即任务执行的时间)
         CronScheduleBuilder scheduleBuilder = CronScheduleBuilder.cronSchedule(cronExpression);
@@ -102,12 +90,14 @@ public class JobController
 	@PostMapping(value="/reschedulejob")
 	public void rescheduleJob(@RequestParam(value="jobClassName")String jobClassName, 
 			@RequestParam(value="jobGroupName")String jobGroupName,
-			@RequestParam(value="cronExpression")String cronExpression) throws Exception
+			@RequestParam(value="cronExpression")String cronExpression,
+			@RequestParam(value="description")String description
+	) throws Exception
 	{			
-		jobreschedule(jobClassName, jobGroupName, cronExpression);
+		jobreschedule(jobClassName, jobGroupName, cronExpression,description);
 	}
 	
-	public void jobreschedule(String jobClassName, String jobGroupName, String cronExpression) throws Exception
+	public void jobreschedule(String jobClassName, String jobGroupName, String cronExpression,String description) throws Exception
 	{				
 		try {
 			TriggerKey triggerKey = TriggerKey.triggerKey(jobClassName, jobGroupName);
@@ -117,7 +107,7 @@ public class JobController
 			CronTrigger trigger = (CronTrigger) scheduler.getTrigger(triggerKey);
 
 			// 按新的cronExpression表达式重新构建trigger
-			trigger = trigger.getTriggerBuilder().withIdentity(triggerKey).withSchedule(scheduleBuilder).build();
+			trigger = trigger.getTriggerBuilder().withIdentity(triggerKey).withSchedule(scheduleBuilder).withDescription(description).build();
 
 			// 按新的trigger重新设置job执行
 			scheduler.rescheduleJob(triggerKey, trigger);
